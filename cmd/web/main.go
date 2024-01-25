@@ -8,19 +8,23 @@ import (
 	"os"
 	"path/filepath"
 
+	"snippetbox.baha.tn/internal/models"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
 type application struct {
 	errorLog *log.Logger
 	infoLog  *log.Logger
+	snippets *models.SnippetModel
 }
 
 func main() {
 
 	addr := flag.String("addr", ":4000", "HTTP network address")
 
-	dsn := flag.String("dsn", "root:baha@/snippetbox?parseTime=true", "MySql data source name")
+	// access denied to the user 'web' --> need some  more debuging
+	dsn := flag.String("dsn", "root:baha@tcp(localhost:3306)/snippetbox?parseTime=true", "MySql data source name")
 
 	flag.Parse()
 
@@ -39,6 +43,7 @@ func main() {
 	app := &application{
 		errorLog: errorLog,
 		infoLog:  infoLog,
+		snippets: &models.SnippetModel{DB: db},
 	}
 
 	srv := &http.Server{
