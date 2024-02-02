@@ -72,10 +72,6 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	println(form.Title)
-	println(form.Content)
-	println(form.Expires)
-
 	form.CheckField(validators.NotBlank(form.Title), "title", "This field cannot be blank")
 	form.CheckField(validators.NotBlank(form.Content), "content", "This field cannot be blank")
 	form.CheckField(validators.MaxChars(form.Title, 100), "title", "This field cannot be more than 100 characters long")
@@ -93,6 +89,8 @@ func (app *application) snippetCreatePost(w http.ResponseWriter, r *http.Request
 		app.serverError(w, err)
 		return
 	}
+
+	app.sessionManager.Put(r.Context(), "flash", "Snippet successfully created!")
 
 	http.Redirect(w, r, fmt.Sprintf("/snippet/view/%d", id), http.StatusSeeOther)
 }
