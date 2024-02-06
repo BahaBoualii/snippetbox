@@ -1,13 +1,13 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"flag"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
-	"path/filepath"
 	"time"
 
 	"snippetbox.baha.tn/internal/models"
@@ -22,6 +22,7 @@ type application struct {
 	errorLog       *log.Logger
 	infoLog        *log.Logger
 	snippets       *models.SnippetModel
+	users          *models.UserModel
 	templateCache  map[string]*template.Template
 	formDecoder    *form.Decoder
 	sessionManager *scs.SessionManager
@@ -58,24 +59,36 @@ func main() {
 	sessionManager := scs.New()
 	sessionManager.Store = mysqlstore.New(db)
 	sessionManager.Lifetime = 12 * time.Hour
+	sessionManager.Cookie.Secure = true
 
 	app := &application{
 		errorLog:       errorLog,
 		infoLog:        infoLog,
 		snippets:       &models.SnippetModel{DB: db},
+		users:          &models.UserModel{DB: db},
 		templateCache:  templateCache,
 		formDecoder:    formDecoder,
 		sessionManager: sessionManager,
 	}
 
+	tlsConfig := &tls.Config{
+		CurvePreferences: []tls.CurveID{tls.X25519, tls.CurveP256},
+	}
+
 	srv := &http.Server{
-		Addr:     *addr,
-		ErrorLog: errorLog,
-		Handler:  app.routes(),
+		Addr:         *addr,
+		ErrorLog:     errorLog,
+		Handler:      app.routes(),
+		TLSConfig:    tlsConfig,
+		IdleTimeout:  time.Minute,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
 	}
 
 	infoLog.Printf("Server starting on %s", *addr)
+	// err = srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem")
 	err = srv.ListenAndServe()
+	// CHECK FOR THE CSS, JS AND FAVICON FILES NOT LOADING WHEN APPLYING THE TLS CERTIFICATE !!!!!!!
 	errorLog.Fatal(err)
 }
 
@@ -88,31 +101,4 @@ func openDB(dsn string) (*sql.DB, error) {
 		return nil, err
 	}
 	return db, nil
-}
-
-type neutredFileSystem struct {
-	fs http.FileSystem
-}
-
-func (nfs neutredFileSystem) Open(path string) (http.File, error) {
-	f, err := nfs.fs.Open(path)
-
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := f.Stat()
-	if s.IsDir() {
-		index := filepath.Join(path, "index.html")
-
-		if _, err := nfs.fs.Open(index); err != nil {
-			closeErr := f.Close()
-			if closeErr != nil {
-				return nil, closeErr
-			}
-
-			return nil, err
-		}
-	}
-	return f, nil
 }
