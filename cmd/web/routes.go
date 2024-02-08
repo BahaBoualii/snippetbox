@@ -5,6 +5,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"github.com/justinas/alice"
+	"snippetbox.baha.tn/ui"
 )
 
 func (app *application) routes() http.Handler {
@@ -14,8 +15,8 @@ func (app *application) routes() http.Handler {
 		app.notFound(w)
 	})
 
-	fileSever := http.FileServer(http.Dir("./ui/static"))
-	router.Handler(http.MethodGet, "/static/", http.StripPrefix("/static", fileSever))
+	fileSever := http.FileServer(http.FS(ui.Files))
+	router.Handler(http.MethodGet, "/static/*filepath", fileSever)
 
 	// unprotected app routes using the dynamic middleware chain
 	dynamic := alice.New(app.sessionManager.LoadAndSave, noSurf, app.authenticate)
