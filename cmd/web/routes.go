@@ -18,6 +18,8 @@ func (app *application) routes() http.Handler {
 	fileSever := http.FileServer(http.FS(ui.Files))
 	router.Handler(http.MethodGet, "/static/*filepath", fileSever)
 
+	router.HandlerFunc(http.MethodGet, "/ping", ping)
+
 	// unprotected app routes using the dynamic middleware chain
 	dynamic := alice.New(app.sessionManager.LoadAndSave, noSurf, app.authenticate)
 
